@@ -1,0 +1,142 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Hypno Bork</title>
+    <style type="text/css">
+      * { margin:0; padding:0; }
+
+      html, body { width:100%; height:100%; }
+
+      canvas { 
+        display:block; 
+        position: absolute; 
+        top: 0; left: 0; 
+        width: 100%; height: 100%; 
+      }
+    </style>
+  </head>
+  <body>
+    <div id="instruction">
+    <h1>Online Hypnosis</h1>
+    <p>Look at the hypnosis spiral until you're high.</p>
+    </div>
+    <canvas id="myCanvas" width="800" height="600"></canvas>
+    <script type="text/javascript">
+      var byteClamp = function(b) {
+        return Math.max(0, Math.min(255, b));
+      };
+
+      var fastSin = function(x) {
+        return Math.abs((x % 3.0) / 3.0 - 1.5);
+      };
+
+      var fastSqrt = function(x) {
+        return Math.abs(x);
+      };
+
+      var fltClamp = function(x) {
+        return (x % Math.PI) / Math.PI;
+      };
+
+      var canvas = document.getElementById('myCanvas');
+      var context = canvas.getContext('2d');
+      var width, height, imageData, bitmap, cx, cy, delta;
+      var rmap, gmap, bmap;
+      var adaptiveDivisor = 32;
+      var targetFrameDelay = Math.round(1000.0 / 30);
+      
+      var setup = function() {
+        width = canvas.width;
+        height = canvas.height;
+        imageData = context.createImageData(width, height);
+        bitmap = new Uint8Array(new ArrayBuffer(width * height));
+        rmap = new Uint8Array(new ArrayBuffer(256));
+        gmap = new Uint8Array(new ArrayBuffer(256)); 
+        bmap = new Uint8Array(new ArrayBuffer(256)); 
+        cx = width / 2;
+        cy = height / 2;
+        delta = 0;
+
+        for (var i = 0; i < 256; i++) {
+          rmap[i] = byteClamp(Math.abs(i - 128) * 2);
+          gmap[i] = byteClamp(Math.abs(i - 128) * 2);
+          bmap[i] = byteClamp(255 - Math.abs(i - 128) * 2);
+        }
+
+        var bitmappos = 0;
+        for (var y = 0; y < height; y++) {
+          for (var x = 0; x < width; x++) {
+            var dx = x - cx;
+            var dy = y - cy;
+            var distance = Math.sqrt(dx * dx + dy * dy);
+            var value = fltClamp(Math.log(distance + 1.0) * 14.0 + Math.atan2(dx, dy)) * 2.0;
+            bitmap[bitmappos++] = byteClamp(Math.floor(value * 128));
+          }
+        }
+      };
+
+      var last = new Date().getTime();
+      window.render = function() {
+        var now = new Date().getTime();
+        var deltaTime = now - last;
+        var pos = 0;
+        var bitmappos = 0;
+        for (var y = 0; y < height; y++) {
+          for (var x = 0; x < width; x++) {
+            var value = (bitmap[bitmappos++] + delta) % 256;
+            imageData.data[pos++] = rmap[value];
+            imageData.data[pos++] = gmap[value];
+            imageData.data[pos++] = bmap[value];
+            imageData.data[pos++] = 255;
+          }
+        }
+        delta = (delta + Math.floor(deltaTime / 2)) % 256;
+        context.putImageData(imageData, 0, 0);
+        
+        last = now;
+        var factor = (adaptiveDivisor - 1.0) / adaptiveDivisor;
+        if (Math.floor(deltaTime / targetFrameDelay) > adaptiveDivisor) {
+          if (adaptiveDivisor < 16) {
+            adaptiveDivisor++;
+            resizeCanvas();
+            last = new Date().getTime() - targetFrameDelay;
+          }
+        } else if (deltaTime < targetFrameDelay * factor * factor) {
+          if (adaptiveDivisor > 1) {
+            adaptiveDivisor--;
+            resizeCanvas();
+            last = new Date().getTime() - targetFrameDelay;
+          }
+        }
+      };
+
+      window.requestAnimFrame = (function(){
+        return  window.requestAnimationFrame       || 
+                window.webkitRequestAnimationFrame || 
+                window.mozRequestAnimationFrame    || 
+                window.oRequestAnimationFrame      || 
+                window.msRequestAnimationFrame     || 
+                function( callback ){
+                  window.setTimeout(callback, targetFrameDelay);
+                };
+      })();
+ 
+      window.addEventListener('resize', resizeCanvas, false);
+
+      var resizeCanvas = function() {
+        canvas.width = window.innerWidth / adaptiveDivisor;
+        canvas.height = window.innerHeight / adaptiveDivisor;
+        setup();
+        render();
+      };
+      resizeCanvas();
+
+      (function animloop(){
+        requestAnimFrame(animloop);
+        render();
+      })();
+
+    </script>
+  </body>
+</html>
