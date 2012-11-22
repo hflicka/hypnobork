@@ -94,21 +94,21 @@
         delta = (delta + Math.floor(deltaTime / 2)) % 256;
         context.putImageData(imageData, 0, 0);
         
-        last = now;
+		var afterRender = new Date().getTime();
+		
         var factor = (adaptiveDivisor - 1.0) / adaptiveDivisor;
-        if (Math.floor(deltaTime / targetFrameDelay) > adaptiveDivisor) {
+        if (Math.floor(1.0 * deltaTime / targetFrameDelay) > adaptiveDivisor) {
           if (adaptiveDivisor < 16) {
             adaptiveDivisor++;
             resizeCanvas();
-            last = new Date().getTime() - targetFrameDelay;
           }
-        } else if (deltaTime < targetFrameDelay * factor * factor) {
+        } else if (1.0 * deltaTime < targetFrameDelay * factor * factor) {
           if (adaptiveDivisor > 1) {
             adaptiveDivisor--;
             resizeCanvas();
-            last = new Date().getTime() - targetFrameDelay;
           }
         }
+        last = new Date().getTime() - (afterRender - now);
       };
 
       window.requestAnimFrame = (function(){
@@ -128,7 +128,6 @@
         canvas.width = window.innerWidth / adaptiveDivisor;
         canvas.height = window.innerHeight / adaptiveDivisor;
         setup();
-        render();
       };
       resizeCanvas();
 
